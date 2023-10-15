@@ -6,7 +6,6 @@ import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -26,8 +25,6 @@ import org.json.JSONObject;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -37,11 +34,12 @@ public class MainActivity extends AppCompatActivity {
     private final String host="tcp://192.168.43.222:1883";
     private final String userName = "android";
     private final String passWord = "android";
-    private String mqtt_id = "2405499352"; //定义成自己的QQ号  切记！不然会掉线！！！
-    private String mqtt_sub_topic = "esp/#"; //为了保证你不受到别人的消息  哈哈
-    private String mqtt_pub_topic = "led/1"; //为了保证你不受到别人的消息  哈哈  自己QQ好后面加 _PC
+    private final String mqtt_id = "2405499352";
+    private final String mqtt_sub_topic = "esp/#";
+    private final String mqtt_pub_topic = "led/1";
     private MqttClient client;
     private MqttConnectOptions options;
+    //主线程
     private Handler handler;
 
     private ImageView led;
@@ -72,19 +70,15 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 3:  //MQTT 收到消息回传   UTF8Buffer msg=new UTF8Buffer(object.toString());
                         //Toast.makeText(MainActivity.this,msg.obj.toString() ,Toast.LENGTH_SHORT).show();
+                        
                         String str=msg.obj.toString();
-
-                        Log.e("Tag",str);
-                        String topic;
                         String jsonData="";
                         try {
                             String[] parts = str.split("---");
                             if (parts.length == 2) {
-                                topic = parts[0].trim();
                                 jsonData = parts[1].trim();
                                 // 创建JSONObject实例并传入JSON字符串
                             }
-                            Log.e("Tag",jsonData);
                             JSONObject json = new JSONObject(jsonData);
 
                             // 从JSONObject中获取"humi"和"temp"的值
@@ -93,8 +87,6 @@ public class MainActivity extends AppCompatActivity {
 
                             temp.setText(tempValue+"C");
                             humi.setText(humiValue+"%");
-
-
                         } catch (JSONException e) {
                             // 处理JSON解析异常
                             e.printStackTrace();
@@ -103,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 30:  //连接失败
                         Toast.makeText(MainActivity.this,"连接失败" ,Toast.LENGTH_SHORT).show();
-                        //Log.e("TAG", "handleMessage: error");
                         break;
                     case 31:   //连接成功
                         Toast.makeText(MainActivity.this,"连接成功" ,Toast.LENGTH_SHORT).show();
@@ -111,7 +102,6 @@ public class MainActivity extends AppCompatActivity {
                             client.subscribe(mqtt_sub_topic,1);
                         } catch (MqttException e) {
                             e.printStackTrace();
-
                         }
                         break;
                     default:
@@ -121,13 +111,15 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    /*
 
+        用于初始化MQTT
+     */
     private void Mqtt_init()
     {
         try {
             //host为主机名，test为clientid即连接MQTT的客户端ID，一般以客户端唯一标识符表示，MemoryPersistence设置clientid的保存形式，默认为以内存保存
-            client = new MqttClient(host, mqtt_id,
-                    new MemoryPersistence());
+            client = new MqttClient(host, mqtt_id,new MemoryPersistence());
             //MQTT的连接设置
             options = new MqttConnectOptions();
             //设置是否清空session,这里如果设置为false表示服务器会保留客户端的连接记录，这里设置为true表示每次连接到服务器都以新的身份连接
@@ -146,13 +138,13 @@ public class MainActivity extends AppCompatActivity {
                 public void connectionLost(Throwable cause) {
                     //连接丢失后，一般在这里面进行重连
                     System.out.println("connectionLost----------");
-                    //startReconnect();
+                    startReconnect();
                 }
                 @Override
                 public void deliveryComplete(IMqttDeliveryToken token) {
                     //publish后会执行到这里
-                    System.out.println("deliveryComplete---------"
-                            + token.isComplete());
+                    System.out.println("deliveryComplete---------" + token.isComplete());
+                    Toast.makeText(MainActivity.this,"发送信息",Toast.LENGTH_SHORT).show();
                 }
                 @Override
                 public void messageArrived(String topicName, MqttMessage message)
@@ -190,7 +182,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
+    //自动重连定时器
     private void startReconnect() {
+        //创建单线程的定时执行器
         scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -199,19 +193,18 @@ public class MainActivity extends AppCompatActivity {
                     Mqtt_connect();
                 }
             }
-        }, 0 * 1000, 10 * 1000, TimeUnit.MILLISECONDS);
+        }, 0 * 1000, 10 * 1000, TimeUnit.MILLISECONDS);//任务将在启动后立即执行，然后每隔 10 秒执行一次
     }
-    private void publishmessageplus(String topic,String message2)
+    private void publishMessage(String topic, String msg)
     {
         if (client == null || !client.isConnected()) {
             return;
         }
         MqttMessage message = new MqttMessage();
-        message.setPayload(message2.getBytes());
+        message.setPayload(msg.getBytes());
         try {
             client.publish(topic,message);
         } catch (MqttException e) {
-
             e.printStackTrace();
         }
     }
@@ -226,11 +219,11 @@ public class MainActivity extends AppCompatActivity {
                 if(led_on)
                 {
                     led.setImageResource(R.mipmap.led_off);
-                    publishmessageplus(mqtt_pub_topic,"LED_OFF");
+                    publishMessage(mqtt_pub_topic,"LED_OFF");
                     led_on=false;
                 }else{
                     led.setImageResource(R.mipmap.led_on);
-                    publishmessageplus(mqtt_pub_topic,"LED_ON");
+                    publishMessage(mqtt_pub_topic,"LED_ON");
                     led_on=true;
                 }
 
@@ -240,7 +233,4 @@ public class MainActivity extends AppCompatActivity {
         temp=findViewById(R.id.temp_1);
         humi=findViewById(R.id.humi_1);
     }
-
-
-
 }
