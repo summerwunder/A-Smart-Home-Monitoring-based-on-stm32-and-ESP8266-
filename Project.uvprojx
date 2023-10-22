@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\Hardware\OLED;.\Hardware\LED;.\Hardware\KEY;.\System\usart;.\Hardware\DHT11;.\Hardware\ADC;.\Hardware\PWM;.\Hardware\ESP8266</IncludePath>
+              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\Hardware\OLED;.\Hardware\LED;.\Hardware\KEY;.\System\usart;.\Hardware\DHT11;.\Hardware\ADC;.\Hardware\PWM;.\Hardware\ESP8266;.\Hardware\BUZZER</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -708,6 +708,11 @@
               <FileName>ESP8266.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\ESP8266\ESP8266.c</FilePath>
+            </File>
+            <File>
+              <FileName>BUZZER.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\BUZZER\BUZZER.c</FilePath>
             </File>
           </Files>
         </Group>
